@@ -1,0 +1,10 @@
+[Unit]
+Description=healthbot: Discord server health dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/healthbot --config /etc/healthbot/config.toml
+TimeoutStartSec=90
+Nice=10

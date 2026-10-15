@@ -1,0 +1,56 @@
+# healthbot configuration. Copy to /etc/healthbot/config.toml and keep it
+# readable by root only (chmod 600): the webhook URL is a secret, since anyone
+# who has it can post to your channel.
+
+# Discord channel settings → Integrations → Webhooks → New Webhook → Copy URL.
+# Can also be set with the HEALTHBOT_WEBHOOK_URL environment variable.
+webhook_url = ""
+
+# Optional dead-man's switch: a healthchecks.io (or compatible) ping URL. It is
+# pinged every run, so you get alerted when the server or healthbot stops.
+healthchecks_url = ""
+
+# Display name on the dashboard. Defaults to the hostname.
+name = ""
+
+# Where the message id, alert state and 24h graph history are kept.
+state_dir = "/var/lib/healthbot"
+
+[checks]
+# systemd units that must be active. Anything else that fails is still
+# reported through `failed_units`.
+services = []                # e.g. ["nginx", "docker", "postgresql"]
+mounts = ["/"]               # filesystems to watch, e.g. ["/", "/boot", "/srv"]
+network_interface = "auto"   # "auto" = interface with the default route
+drives = "auto"              # "auto" = everything `smartctl --scan` finds, or ["/dev/sda"]
+failed_units = true          # warn when any systemd unit is in the failed state
+docker = true                # show a container count tile when Docker is present
+
+[thresholds]
+disk_warn = 85               # % used
+disk_crit = 95
+wear_warn = 80               # NVMe "percentage used" (rated endurance consumed)
+wear_crit = 90
+drive_temp_warn = 70         # °C
+cpu_temp_warn = 85           # °C
+cpu_temp_crit = 95
+mem_avail_warn = 10          # % of RAM still available
+mem_avail_crit = 5
+load_warn_per_core = 1.5     # 5-minute load average per CPU core
+
+[alerts]
+# Prepended to alert messages. "@here", "@everyone", a role "<@&ROLE_ID>",
+# a user "<@USER_ID>", or "" for no ping.
+mention = "@here"
+
+[pterodactyl]
+# Warn when a Pterodactyl panel schedule is overdue or stuck. This catches the
+# scheduler silently stopping (e.g. a stale lock after a crash).
+enabled = false
+# Command that opens the panel database. As root on the panel host, the
+# default works via the MySQL/MariaDB unix socket. Otherwise use something like
+# ["mysql", "--defaults-extra-file=/etc/healthbot/my.cnf", "panel"].
+mysql_command = ["mysql", "panel"]
+# Timezone the panel stores schedule times in. "auto" reads APP_TIMEZONE from env_file.
+timezone = "auto"
+env_file = "/var/www/pterodactyl/.env"
