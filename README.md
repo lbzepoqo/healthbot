@@ -19,13 +19,13 @@ myserver · server health
 🟢  All systems healthy
 Updated 1 minute ago
 
-CPU               Memory              Uptime
+CPU load          Memory              Uptime
 5%                11.4 / 63 GiB       2d 13h
 load 0.62 · 53°C  18% used            since Oct 13
 
 RAID              Disk /              Containers
 md2 ✓ md3 ✓       75%                 9 running
-mirrored, in sync 115 GiB free        of 20 total
+all in sync       115 GiB free        of 20 total
 
 ✅ Services — all 3 running
 ✅ Drives — healthy · wear 15% / 30%
@@ -35,7 +35,7 @@ mirrored, in sync 115 GiB free        of 20 total
 
 | Area | Checks |
 |---|---|
-| **Storage** | Linux software RAID (`/proc/mdstat`): degraded, rebuilding, inactive · SMART health of every drive: failure, NVMe wear/spare/media errors, SATA reallocated/pending sectors, temperature · disk usage per mount |
+| **Storage** | Linux software RAID (`/proc/mdstat`): degraded, rebuilding, inactive (a routine scrub is shown but does not alert) · SMART health of every drive: failure, NVMe wear/spare/media errors, SATA reallocated/pending sectors, temperature · disk usage per mount |
 | **System** | CPU load, memory, CPU temperature (AMD, Intel, Raspberry Pi), uptime, network throughput |
 | **Services** | systemd units you list must be active · any failed unit · Docker container count |
 | **Pterodactyl** *(optional)* | panel schedules that are overdue or stuck, e.g. the scheduler silently stalling after a crash |
@@ -52,7 +52,10 @@ Drives in standby are not woken up.
   If it says "15 minutes ago", the server or healthbot is down.
 - A server can't report its own death. For a ping when it goes completely
   silent, set `healthchecks_url` to a free [healthchecks.io](https://healthchecks.io)
-  check (period 1 minute) and connect its Discord integration.
+  check (period 1 minute) and connect its Discord integration. When a
+  dashboard edit or alert can't reach Discord, healthbot pings the check's
+  `/fail` endpoint instead, so you hear about it right away. An alert that
+  could not be posted is retried on the next run.
 
 ## Install
 

@@ -7,7 +7,8 @@
 webhook_url = ""
 
 # Optional dead-man's switch: a healthchecks.io (or compatible) ping URL. It is
-# pinged every run, so you get alerted when the server or healthbot stops.
+# pinged every run, so you get alerted when the server or healthbot stops. When
+# Discord can't be reached, healthbot pings <url>/fail instead.
 healthchecks_url = ""
 
 # Display name on the dashboard. Defaults to the hostname.

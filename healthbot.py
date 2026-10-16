@@ -122,7 +122,9 @@ def check_raid(run):
         bitmap = status[status.rfind("["):].strip() if "[" in status else "?"
         lvl, detail = (CRIT, f"DEGRADED {bitmap}") if "_" in bitmap else (OK, bitmap)
         if any(k in nxt for k in ("recovery", "resync", "reshape", "check")):
-            lvl = max(lvl, WARN)
+            # A "check" is the routine scrub (monthly on Debian), so it is shown without alerting.
+            if "check" not in nxt:
+                lvl = max(lvl, WARN)
             detail += " · " + " ".join(nxt.split()[:4])
         if "inactive" in line:
             lvl, detail = CRIT, "INACTIVE"
@@ -369,7 +371,7 @@ def build_embed(run, now, uptime_s):
     days, rem = divmod(int(uptime_s), 86400)
     cpu_sub = f"load {m['load1']:.2f}" + (f" · {m['cpu_temp']:.0f}°C" if "cpu_temp" in m else "")
     tiles = [
-        tile("CPU", max(run.level("sys:load"), run.level("sys:cpu_temp")), f"{m['load_pct']:.0f}%", cpu_sub),
+        tile("CPU load", max(run.level("sys:load"), run.level("sys:cpu_temp")), f"{m['load_pct']:.0f}%", cpu_sub),
         tile("Memory", run.level("sys:mem"),
              f"{m['mem_used_g']:.1f} / {m['mem_total_g']:.0f} GiB", f"{m['mem_pct']:.0f}% used"),
         tile("Uptime", OK, f"{days}d {rem // 3600}h", f"since <t:{int(now - uptime_s)}:d>"),
@@ -378,7 +380,7 @@ def build_embed(run, now, uptime_s):
     if run.raid:
         lvl = run.level("raid:")
         tiles.append(tile("RAID", lvl, " ".join(f"{n} {'✓' if l == OK else '✗'}" for n, l, _ in sorted(run.raid)),
-                          "mirrored, in sync" if lvl == OK
+                          "all in sync" if lvl == OK
                           else "; ".join(f"{n} {d}" for n, l, d in run.raid if l != OK)))
     else:
         lvl = run.level("drive:")
@@ -493,7 +495,9 @@ def render_dashboard(run, history):
     now = datetime.now()
     t0 = now - timedelta(seconds=HISTORY_SECS)
     fig.text(0.06, 0.96, "Last 24 hours", fontsize=21, weight="bold", color=INK, va="center")
-    fig.text(0.94, 0.96, f"{run.cfg['name']} · {now:%b %d %H:%M}", fontsize=14,
+    # The axes use the server's local time; the header names that zone, since Discord
+    # shows its own timestamps in each viewer's zone.
+    fig.text(0.94, 0.96, f"{run.cfg['name']} · {now.astimezone():%b %d %H:%M %Z}", fontsize=14,
              color=MUTED, ha="right", va="center")
 
     def frame(ax, title, value):
@@ -748,17 +752,25 @@ def main():
         if msg:
             state["msg_id"] = msg["id"]
 
+    sent = lambda code: code is not None and 200 <= code < 300
+    failures = [] if sent(status) else [f"dashboard update failed (HTTP {status})"]
+
+    # Levels are only saved once the alert is delivered, so a failed post is retried next run.
     alert = alert_messages(run, state.get("levels", {}))
-    if alert:
-        discord("POST", webhook, alert)
-    state["levels"] = {key: lvl for key, lvl, _, _ in run.results}
+    alert_status = discord("POST", webhook, alert)[0] if alert else 200
+    if sent(alert_status):
+        state["levels"] = {key: lvl for key, lvl, _, _ in run.results}
+    else:
+        failures.append(f"alert post failed (HTTP {alert_status})")
     write_json(state_file, state)
 
-    # Optional external dead-man's switch: alerts you when these pings stop.
+    # Optional external dead-man's switch: alerts you when these pings stop, or
+    # at once through healthchecks.io's /fail endpoint when Discord is not reachable.
     if cfg["healthchecks_url"]:
+        url = cfg["healthchecks_url"].rstrip("/") + ("/fail" if failures else "")
         try:
             urllib.request.urlopen(urllib.request.Request(
-                cfg["healthchecks_url"], headers={"User-Agent": UA}), timeout=10)
+                url, data="\n".join(failures).encode() or None, headers={"User-Agent": UA}), timeout=10)
         except Exception:
             pass
 
