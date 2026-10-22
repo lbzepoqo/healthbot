@@ -43,6 +43,10 @@ load_warn_per_core = 1.5     # 5-minute load average per CPU core
 # Prepended to alert messages. "@here", "@everyone", a role "<@&ROLE_ID>",
 # a user "<@USER_ID>", or "" for no ping.
 mention = "@here"
+# Optional separate webhook for alerts, so they don't push the dashboard up
+# its channel. Empty = post alerts to webhook_url. Can also be set with the
+# HEALTHBOT_ALERT_WEBHOOK_URL environment variable.
+webhook_url = ""
 
 [pterodactyl]
 # Warn when a Pterodactyl panel schedule is overdue or stuck. This catches the

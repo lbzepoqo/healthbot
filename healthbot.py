@@ -33,7 +33,7 @@ DEFAULTS = {
         "mem_avail_warn": 10, "mem_avail_crit": 5,
         "load_warn_per_core": 1.5,
     },
-    "alerts": {"mention": "@here"},
+    "alerts": {"mention": "@here", "webhook_url": ""},
     "pterodactyl": {
         "enabled": False,
         "mysql_command": ["mysql", "panel"],
@@ -94,6 +94,8 @@ def load_config(path):
             cfg = merge(DEFAULTS, tomllib.load(f))
     cfg = dict(cfg)
     cfg["webhook_url"] = os.environ.get("HEALTHBOT_WEBHOOK_URL", cfg["webhook_url"]).strip()
+    alerts = cfg["alerts"] = dict(cfg["alerts"])
+    alerts["webhook_url"] = os.environ.get("HEALTHBOT_ALERT_WEBHOOK_URL", alerts["webhook_url"]).strip()
     cfg["name"] = cfg["name"] or socket.gethostname()
     return cfg
 
@@ -757,7 +759,8 @@ def main():
 
     # Levels are only saved once the alert is delivered, so a failed post is retried next run.
     alert = alert_messages(run, state.get("levels", {}))
-    alert_status = discord("POST", webhook, alert)[0] if alert else 200
+    alert_webhook = cfg["alerts"]["webhook_url"] or webhook
+    alert_status = discord("POST", alert_webhook, alert)[0] if alert else 200
     if sent(alert_status):
         state["levels"] = {key: lvl for key, lvl, _, _ in run.results}
     else:

@@ -48,6 +48,8 @@ Drives in standby are not woken up.
 
 - The dashboard edit doesn't notify anyone, so state changes post a **new
   message** with a configurable ping (`@here`, a role, a user, or nothing).
+  Set `[alerts] webhook_url` to send them to another channel, so they don't
+  bury the dashboard.
 - The embed shows `Updated <relative time>`, which keeps ticking in Discord.
   If it says "15 minutes ago", the server or healthbot is down.
 - A server can't report its own death. For a ping when it goes completely
